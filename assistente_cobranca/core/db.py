@@ -6,6 +6,7 @@ from collections.abc import Generator
 from sqlalchemy.orm import Session, sessionmaker
 
 from assistente_cobranca.core.config import settings
+from assistente_cobranca.models.base import Base
 
 
 engine = create_engine(settings.database_url, pool_pre_ping=True)
@@ -27,4 +28,11 @@ def check_db() -> bool:
         return True
     except Exception:
         return False
+
+
+def init_db() -> None:
+    # importa models pra registrar no metadata
+    import assistente_cobranca.models  # noqa: F401
+
+    Base.metadata.create_all(bind=engine)
 
