@@ -36,3 +36,14 @@ class InvoiceRead(BaseModel):
 
     model_config = {"from_attributes": True}
 
+
+class InvoiceUpdatedValue(BaseModel):
+    invoice_id: uuid.UUID
+    ref_date: dt.date
+
+    principal: float
+    dias_em_atraso: int
+    multa: float
+    juros: float
+    total: float
+

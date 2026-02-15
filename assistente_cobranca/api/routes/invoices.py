@@ -2,13 +2,16 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+import datetime as dt
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from assistente_cobranca.core.db import get_db
 from assistente_cobranca.models.debtor import Debtor
 from assistente_cobranca.models.invoice import Invoice
-from assistente_cobranca.schemas.invoice import InvoiceCreate, InvoiceRead
+from assistente_cobranca.schemas.invoice import InvoiceCreate, InvoiceRead, InvoiceUpdatedValue
+from assistente_cobranca.services.calculator import updated_value
 
 
 router = APIRouter(prefix="/invoices", tags=["invoices"])
@@ -41,4 +44,34 @@ def get_invoice(invoice_id: uuid.UUID, db: Session = Depends(get_db)):
     if not inv:
         raise HTTPException(status_code=404, detail="titulo nao encontrado")
     return inv
+
+
+@router.get("/{invoice_id}/updated-value", response_model=InvoiceUpdatedValue)
+def get_updated_value(
+    invoice_id: uuid.UUID,
+    ref_date: dt.date | None = Query(default=None),
+    db: Session = Depends(get_db),
+):
+    inv = db.get(Invoice, invoice_id)
+    if not inv:
+        raise HTTPException(status_code=404, detail="titulo nao encontrado")
+
+    ref = ref_date or dt.date.today()
+    calc = updated_value(
+        principal=float(inv.principal),
+        vencimento=inv.vencimento,
+        ref_date=ref,
+        multa_pct=float(inv.multa_pct),
+        juros_mensal_pct=float(inv.juros_mensal_pct),
+    )
+
+    return InvoiceUpdatedValue(
+        invoice_id=inv.id,
+        ref_date=ref,
+        principal=calc.principal,
+        dias_em_atraso=calc.dias_em_atraso,
+        multa=calc.multa,
+        juros=calc.juros,
+        total=calc.total,
+    )
 
