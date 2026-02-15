@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 
+from assistente_cobranca.api.router import api_router
 from assistente_cobranca.core.db import check_db, init_db
 
 
@@ -15,4 +16,7 @@ def _startup():
 @app.get("/health")
 def health():
     return {"ok": True, "db": check_db()}
+
+
+app.include_router(api_router)
 
