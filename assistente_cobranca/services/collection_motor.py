@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from assistente_cobranca.models.collection_case import CollectionCase
 from assistente_cobranca.models.contact_attempt import ContactAttempt
+from assistente_cobranca.services.pdf_notification import generate_notification_pdf
 
 
 def _milestone(vencimento: dt.date, days: int) -> dt.datetime:
@@ -56,13 +57,15 @@ class CollectionMotor:
         if days_overdue >= 15 and "notificacao_pdf" not in attempted:
             case.stage = "notificacao"
             case.next_action_at = _milestone(inv.vencimento, 30)
-            attempt = ContactAttempt(
-                case_id=case.id,
-                canal="pdf",
-                template_key="notificacao_pdf",
-                status="ok",
-                sent_at=now,
-            )
+            attempt = ContactAttempt(case_id=case.id, canal="pdf", template_key="notificacao_pdf", sent_at=now)
+            try:
+                debtor = inv.debtor
+                if debtor:
+                    generate_notification_pdf(debtor=debtor, invoice=inv)
+                attempt.status = "ok"
+            except Exception as e:
+                attempt.status = "erro"
+                attempt.error = str(e)[:250]
             self.db.add(attempt)
             return attempt
 
