@@ -13,12 +13,11 @@ logs:
 \tdocker compose logs -f api
 
 test:
-\tpython3 -m pip install -r requirements.txt -r requirements-dev.txt
-\tpytest -q
+\tdocker compose run --rm api sh -lc "pip install -r requirements-dev.txt && pytest -q"
 
 seed:
-\tpython3 -m assistente_cobranca.seed
+\tdocker compose run --rm api python -m assistente_cobranca.seed
 
 motor:
-\tpython3 -m assistente_cobranca.motor
+\tdocker compose run --rm api python -m assistente_cobranca.motor
 
