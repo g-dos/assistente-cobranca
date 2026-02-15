@@ -4,7 +4,7 @@ import uuid
 
 import datetime as dt
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 
 from assistente_cobranca.core.db import get_db
@@ -13,6 +13,7 @@ from assistente_cobranca.models.debtor import Debtor
 from assistente_cobranca.models.invoice import Invoice
 from assistente_cobranca.schemas.invoice import InvoiceCreate, InvoiceRead, InvoiceUpdatedValue
 from assistente_cobranca.services.calculator import updated_value
+from assistente_cobranca.services.pdf_notification import generate_notification_pdf
 
 
 router = APIRouter(prefix="/invoices", tags=["invoices"])
@@ -84,4 +85,18 @@ def get_updated_value(
         juros=calc.juros,
         total=calc.total,
     )
+
+
+@router.post("/{invoice_id}/notification")
+def generate_notification(invoice_id: uuid.UUID, db: Session = Depends(get_db)):
+    inv = db.get(Invoice, invoice_id)
+    if not inv:
+        raise HTTPException(status_code=404, detail="titulo nao encontrado")
+
+    debtor = db.get(Debtor, inv.debtor_id)
+    if not debtor:
+        raise HTTPException(status_code=404, detail="devedor nao encontrado")
+
+    pdf = generate_notification_pdf(debtor=debtor, invoice=inv)
+    return Response(content=pdf, media_type="application/pdf")
 
