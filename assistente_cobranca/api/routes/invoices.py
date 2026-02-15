@@ -11,6 +11,8 @@ from assistente_cobranca.core.db import get_db
 from assistente_cobranca.models.collection_case import CollectionCase
 from assistente_cobranca.models.debtor import Debtor
 from assistente_cobranca.models.invoice import Invoice
+from assistente_cobranca.repositories.cases import CaseRepository
+from assistente_cobranca.repositories.invoices import InvoiceRepository
 from assistente_cobranca.schemas.invoice import InvoiceCreate, InvoiceRead, InvoiceUpdatedValue
 from assistente_cobranca.services.calculator import updated_value
 from assistente_cobranca.services.pdf_notification import generate_notification_pdf
@@ -35,17 +37,9 @@ def create_invoice(payload: InvoiceCreate, db: Session = Depends(get_db)):
         multa_pct=payload.multa_pct,
         juros_mensal_pct=payload.juros_mensal_pct,
     )
-    db.add(inv)
-    db.commit()
-    db.refresh(inv)
 
-    # primeira ação: d+1 do vencimento
-    next_action_at = dt.datetime.combine(inv.vencimento, dt.time(9, 0), tzinfo=dt.timezone.utc) + dt.timedelta(
-        days=1
-    )
-    case = CollectionCase(invoice_id=inv.id, next_action_at=next_action_at)
-    db.add(case)
-    db.commit()
+    inv = InvoiceRepository(db).create(inv)
+    CaseRepository(db).create_for_invoice(invoice_id=inv.id, vencimento=inv.vencimento)
     return inv
 
 
