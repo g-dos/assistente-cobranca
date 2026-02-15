@@ -5,6 +5,8 @@ from dataclasses import dataclass
 
 import httpx
 
+from assistente_cobranca.services.cache import cache_get_json, cache_set_json
+
 
 def normalize_cnpj(value: str) -> str:
     return re.sub(r"\\D", "", value or "")
@@ -32,15 +34,26 @@ def is_valid_cnpj(value: str) -> bool:
 class BrasilApiClient:
     base_url: str = "https://brasilapi.com.br/api"
     timeout_s: float = 10.0
+    cache_ttl_s: int = 60 * 60
 
     async def fetch_cnpj(self, cnpj: str) -> dict:
         cnpj_norm = normalize_cnpj(cnpj)
         if not is_valid_cnpj(cnpj_norm):
             raise ValueError("cnpj invalido")
 
+        cache_key = f"cnpj:{cnpj_norm}"
+        cached = await cache_get_json(cache_key)
+        if cached:
+            return cached
+
         url = f"{self.base_url}/cnpj/v1/{cnpj_norm}"
         async with httpx.AsyncClient(timeout=self.timeout_s) as client:
             resp = await client.get(url)
             resp.raise_for_status()
-            return resp.json()
+            data = resp.json()
+            try:
+                await cache_set_json(cache_key, data, ttl_s=self.cache_ttl_s)
+            except Exception:
+                pass
+            return data
 
