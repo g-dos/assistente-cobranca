@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from assistente_cobranca.core.db import get_db
+from assistente_cobranca.models.collection_case import CollectionCase
 from assistente_cobranca.models.debtor import Debtor
 from assistente_cobranca.models.invoice import Invoice
 from assistente_cobranca.schemas.invoice import InvoiceCreate, InvoiceRead, InvoiceUpdatedValue
@@ -23,6 +24,7 @@ def create_invoice(payload: InvoiceCreate, db: Session = Depends(get_db)):
     if not debtor:
         raise HTTPException(status_code=404, detail="devedor nao encontrado")
 
+    # cria o título e já abre um caso de cobrança (bem simples por enquanto)
     inv = Invoice(
         debtor_id=payload.debtor_id,
         numero=payload.numero,
@@ -35,6 +37,14 @@ def create_invoice(payload: InvoiceCreate, db: Session = Depends(get_db)):
     db.add(inv)
     db.commit()
     db.refresh(inv)
+
+    # primeira ação: d+1 do vencimento
+    next_action_at = dt.datetime.combine(inv.vencimento, dt.time(9, 0), tzinfo=dt.timezone.utc) + dt.timedelta(
+        days=1
+    )
+    case = CollectionCase(invoice_id=inv.id, next_action_at=next_action_at)
+    db.add(case)
+    db.commit()
     return inv
 
 
