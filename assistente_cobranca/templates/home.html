@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="pt-br">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>assistente-cobranca</title>
+    <style>
+      body { font-family: system-ui, -apple-system, sans-serif; margin: 24px; }
+      .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+      .card { border: 1px solid #ddd; border-radius: 10px; padding: 16px; }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { padding: 6px 8px; border-bottom: 1px solid #eee; text-align: left; font-size: 14px; }
+      code { background: #f6f6f6; padding: 2px 6px; border-radius: 6px; }
+      input, select { padding: 8px; border: 1px solid #ccc; border-radius: 8px; }
+      button { padding: 8px 12px; border: 1px solid #111; border-radius: 8px; background: #111; color: #fff; cursor: pointer; }
+      button.secondary { background: #fff; color: #111; }
+      .pill { display: inline-block; padding: 2px 8px; border: 1px solid #ddd; border-radius: 999px; font-size: 12px; margin-right: 6px;}
+    </style>
+  </head>
+  <body>
+    <h2>assistente-cobranca</h2>
+    <p>
+      <span class="pill">aging 0-30: {{ buckets["0-30"] }}</span>
+      <span class="pill">31-60: {{ buckets["31-60"] }}</span>
+      <span class="pill">61-90: {{ buckets["61-90"] }}</span>
+      <span class="pill">90+: {{ buckets["90+"] }}</span>
+    </p>
+
+    <div class="row">
+      <div class="card">
+        <h3>novo devedor (pj)</h3>
+        <form method="post" action="/debtors">
+          <input name="cnpj" placeholder="cnpj (só números)" required />
+          <label style="margin-left:8px;">
+            <input type="checkbox" name="enrich" value="true" /> enriquecer agora
+          </label>
+          <div style="margin-top:10px;">
+            <button type="submit">cadastrar</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <h3>novo título</h3>
+        <form method="post" action="/invoices">
+          <div style="display:grid; gap:8px;">
+            <select name="debtor_id" required>
+              <option value="">selecione o devedor</option>
+              {% for d in debtors %}
+                <option value="{{ d.id }}">{{ d.razao_social or d.cnpj }}</option>
+              {% endfor %}
+            </select>
+            <input name="numero" placeholder="número" required />
+            <input name="descricao" placeholder="descrição (opcional)" />
+            <input name="vencimento" type="date" required />
+            <input name="principal" type="number" step="0.01" placeholder="principal" required />
+            <input name="multa_pct" type="number" step="0.01" placeholder="multa (%)" value="2" />
+            <input name="juros_mensal_pct" type="number" step="0.01" placeholder="juros a.m. (%)" value="1" />
+          </div>
+          <div style="margin-top:10px;">
+            <button type="submit">criar título</button>
+            <button type="submit" formaction="/cases/run-due" class="secondary">rodar vencidos</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top: 16px;">
+      <div class="card">
+        <h3>devedores</h3>
+        <table>
+          <thead><tr><th>cnpj</th><th>razão social</th><th>situação</th></tr></thead>
+          <tbody>
+            {% for d in debtors %}
+              <tr>
+                <td><code>{{ d.cnpj }}</code></td>
+                <td>{{ d.razao_social or "-" }}</td>
+                <td>{{ d.situacao_cadastral or "-" }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h3>casos</h3>
+        <table>
+          <thead><tr><th>id</th><th>stage</th><th>status</th><th>próxima</th></tr></thead>
+          <tbody>
+            {% for c in cases %}
+              <tr>
+                <td><a href="/cases/{{ c.id }}"><code>{{ c.id }}</code></a></td>
+                <td>{{ c.stage }}</td>
+                <td>{{ c.status }}</td>
+                <td>{{ c.next_action_at or "-" }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </body>
+</html>
+

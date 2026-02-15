@@ -2,6 +2,7 @@ from fastapi import FastAPI
 
 from assistente_cobranca.api.router import api_router
 from assistente_cobranca.core.db import check_db, init_db
+from assistente_cobranca.web import router as web_router
 
 
 app = FastAPI(title="assistente-cobranca", version="0.1.0")
@@ -19,4 +20,5 @@ def health():
 
 
 app.include_router(api_router)
+app.include_router(web_router)
 
