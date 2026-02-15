@@ -40,3 +40,11 @@ def run_case(case_id: uuid.UUID, db: Session = Depends(get_db)):
         "template_key": attempt.template_key if attempt else None,
     }
 
+
+@router.post("/run-due")
+def run_due(db: Session = Depends(get_db)):
+    motor = CollectionMotor(db)
+    ran = motor.run_due_cases()
+    db.commit()
+    return {"ok": True, "ran": ran}
+
